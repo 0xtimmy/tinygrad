@@ -229,6 +229,7 @@ class Linearizer(Kernel):
           buf_idxs[self.shape_len-self.upcasted+n] = replace_input_idxs[len(tc.threads)+n] # replace upcasts
       if DEBUG >= 3: print(f"{localbuf_idx} alias {i}: sts={self.sts[i]} idxs={buf_idxs}")
       alias_buf_idxs.append((i, localbuf_idx, buf_idxs,))
+      print()
 
     # reduce loop
     loop_ctx = self.render_loop(reduce_idxs, seq*4+2)
@@ -246,6 +247,8 @@ class Linearizer(Kernel):
 
     # store local aliases
     locals_to_store = [(localbuf_idx, buf_idxs, self.global_load(i, buf_idxs)) for i, localbuf_idx, buf_idxs in alias_buf_idxs]
+    print("alias_buf_idxs=",alias_buf_idxs)
+    wmma_off = self.reduceops.index(reduceop)*2
 
     if (tc:=self.tensor_core):
       # run tensor cores AST
@@ -256,14 +259,15 @@ class Linearizer(Kernel):
           strides.append((0 if stride == 0 else next, sz))
           next *= 1 if stride == 0 else sz
         return strides
-      upcasts, dev = [upcast_strides(x) for x in [locals_to_store[0][0], locals_to_store[1][0], 0]], self.opts.device
+      upcasts, dev = [upcast_strides(x) for x in [locals_to_store[0+wmma_off][0], locals_to_store[1+wmma_off][0], 0]], self.opts.device
       # cast initial accs
       wmmas = [self.uops.add(UOps.CAST, (dt3:=tc.dtype_out.vec(wmma_sz[2])), tuple(accs[reduceop][x:x+wmma_sz[2]]))
                for x in range(0, len(accs[reduceop]), wmma_sz[2])]
       for iter in [x[::-1] for x in itertools.product(*[x for x in [range(sz) for _,sz in upcasts[0]][::-1]])]:
         offs = [x*y for (x,y) in zip([sum([prod(x) for x in zip(iter, [stride for stride,_ in y])]) for y in upcasts], wmma_sz)]
-        ops = (self.uops.add(UOps.CAST, tc.dtype_in.vec(wmma_sz[0]), tuple(locals_to_store[0][2][offs[0]:offs[0]+wmma_sz[0]])),
-                self.uops.add(UOps.CAST, tc.dtype_in.vec(wmma_sz[1]), tuple(locals_to_store[1][2][offs[1]:offs[1]+wmma_sz[1]])),
+        
+        ops = (self.uops.add(UOps.CAST, tc.dtype_in.vec(wmma_sz[0]), tuple(locals_to_store[0+wmma_off][2][offs[0]:offs[0]+wmma_sz[0]])),
+                self.uops.add(UOps.CAST, tc.dtype_in.vec(wmma_sz[1]), tuple(locals_to_store[1+wmma_off][2][offs[1]:offs[1]+wmma_sz[1]])),
                 wmmas[(wmma_idx:=offs[2]//wmma_sz[2])])
         # TODO: don't need to DEFINE_ACC, pass to WMMA in op3, or PHI accs that are not valid
         wmmas[wmma_idx] = self.uops.add(UOps.WMMA, dt3, ops, (str(tc), tc.dims, tc.dtype_in, tc.dtype_out, tuple(wmma_sz), dev))
