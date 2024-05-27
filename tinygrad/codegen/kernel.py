@@ -35,7 +35,7 @@ class Opt:
     return self.axis
 
 class TensorCoreOptions(NamedTuple):
-  bufs: Tuple[int, int] # the local aliased buffers for A and B
+  bufs: List[Tuple[int, int]] # the local aliased buffers for A and B, for each reduceop
   axes: List[int] # the location of the original N and M axes if still in the shape
   axes_exist: List[bool] # true if the original N and M axes are still in the shape
   def fix_axes(self, removed_axis:int): # adjust the TC axes if necesssary when an dimension is removed
