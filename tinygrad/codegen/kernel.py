@@ -340,6 +340,7 @@ class Kernel:
         if any([buf0 is None or buf1 is None for (buf0, buf1) in buf_pairs]): continue
 
         stride_pairs = [(self.sts[buf0].real_strides(), self.sts[buf1].real_strides()) for (buf0, buf1) in buf_pairs]
+        a
         axis_pairs = [(
           [(i,self.full_shape[i],buf1_strides[i]) for i,s in enumerate(buf0_strides[:self.first_reduce]) if s == 0],
           [(i,self.full_shape[i],buf0_strides[i]) for i,s in enumerate(buf1_strides[:self.first_reduce]) if s == 0]
@@ -352,7 +353,7 @@ class Kernel:
 
         s0, s1, s2 = axis_choices[-(axis+1)][0][0], axis_choices[-(axis+1)][1][0], axis_choices[-(axis+1)][2]  # s0 is n, s1 is m, s2 is k
         axis_pads = [(x, tc.dims[i]) for i, x in enumerate([s0, s1, s2]) if self.full_shape[x]%tc.dims[i] != 0]
-        if axis_pads and (opt_level < 2): break
+        if axis_pads and (opt_level < 2): continue
 
         # tensor core -- unroll the reduce dim, upcast input, then create the correct thread pattern
         self.tensor_core_opts = (tc_opts:=TensorCoreOptions(bufs=(b for pair in buf_pairs for b in pair), axes=[s0, s1], axes_exist=[True, True]))
@@ -360,7 +361,7 @@ class Kernel:
         # attempt to pad the tensor axes that require it
         try:
           for axis, dim in axis_pads: self.apply_opt(Opt(OptOps.PADTO, axis, dim), append_opt=False) # PADTO might fail
-        except KernelOptError: break
+        except KernelOptError: continue
         self.apply_opt(Opt(OptOps.UNROLL, s2-self.first_reduce, tc.dims[2]), append_opt=False)
         for i, sz in enumerate([prod(x) for x in [[x[1] for x in tc.threads if x[0]==dim] for dim in range(2)]]): # upcast non-local'd N, M
           if tc.dims[i] > sz: self.apply_opt(Opt(OptOps.UPCAST, tc_opts.axes[i], tc.dims[i]//sz), append_opt=False)
