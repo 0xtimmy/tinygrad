@@ -220,8 +220,8 @@ class Linearizer(Kernel):
         print("self.local_alias=")
         print(self.local_alias)
         replace_input_idxs = calc_tc_idxs(
-          tc.thread_local_sizes[i-min_alias_idx], 
-          tc.thread_local_aliases[i-min_alias_idx])
+          tc.thread_local_sizes[i%2-min_alias_idx], 
+          tc.thread_local_aliases[i%2-min_alias_idx])
         for n in range(len(tc.threads)):
           buf_idxs[self.global_dims+n] = replace_input_idxs[n] # replace locals
         for n in range(tc.num_upcasts()):
