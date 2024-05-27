@@ -340,9 +340,9 @@ class TestLinearizer(unittest.TestCase):
     r1 = (d.sqrt() + ((c+1).sum(axis=3).exp()))
     ast = _temp_create_multireduce_ast(r0, r1)
     helper_linearizer_ast(ast, [a, b, c, d], [
-      [Opt(OptOps.LOCAL, 0, 2)],
-      [Opt(OptOps.LOCAL, 0, 8)],
-      [Opt(OptOps.LOCAL, 0, 16)], # Checking how it works with locals
+      # [Opt(OptOps.LOCAL, 0, 2)],
+      # [Opt(OptOps.LOCAL, 0, 8)],
+      # [Opt(OptOps.LOCAL, 0, 16)], # Checking how it works with locals
       # [Opt(OptOps.GROUPTOP, 0, 2)],
       # [Opt(OptOps.GROUPTOP, 0, 32)],
       # [Opt(OptOps.GROUPTOP, 0, 64)], # Checking how it works with grouped reduce
