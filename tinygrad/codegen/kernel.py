@@ -327,7 +327,7 @@ class Kernel:
         if has_cast and all([not(reduceop.src[0].op is UnaryOps.CAST and reduceop.src[0].arg == tc.dtype_out) for reduceop in self.reduceops]): continue
 
         mul_ops = [r.src[0].src[0] for r in self.reduceops] if has_cast else [r.src[0] for r in self.reduceops]
-        if [op.op is not BinaryOps.MUL for op in mul_ops]: continue
+        if any([op.op is not BinaryOps.MUL for op in mul_ops]): continue
 
         def buf_index(src: LazyOp) -> Optional[int]:
           # TODO: apply tc even if the sources are not from LOAD
