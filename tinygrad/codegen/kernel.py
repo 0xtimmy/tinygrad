@@ -323,11 +323,12 @@ class Kernel:
   def _apply_tc_opt(self, use_tensor_cores:int, axis:int, opt_level:int) -> bool:
     if use_tensor_cores and self.opts.has_local and self.reduceop and self.reduceop.op is ReduceOps.SUM:
       for tc in self.opts.tensor_cores:
+        opted = set()
         for reduceop in self.reduceops:
           has_cast = tc.dtype_in != tc.dtype_out
-          if has_cast and not(self.reduceop.src[0].op is UnaryOps.CAST and self.reduceop.src[0].arg == tc.dtype_out): break
+          if has_cast and not(reduceop.src[0].op is UnaryOps.CAST and reduceop.src[0].arg == tc.dtype_out): break
 
-          mul_op = self.reduceop.src[0].src[0] if has_cast else self.reduceop.src[0]
+          mul_op = reduceop.src[0].src[0] if has_cast else reduceop.src[0]
           if mul_op.op is not BinaryOps.MUL: break
 
           def buf_index(src: LazyOp) -> Optional[int]:
@@ -363,11 +364,12 @@ class Kernel:
             if tc.dims[i] > sz: self.apply_opt(Opt(OptOps.UPCAST, tc_opts.axes[i], tc.dims[i]//sz), append_opt=False)
           for (tc_dim, tc_amt) in tc.threads:
             self.apply_opt(Opt(OptOps.LOCAL, tc_opts.axes[tc_dim], tc_amt), append_opt=False)
-
+        
           # assert tensor core
           if DEBUG >= 3: print("TENSOR CORES", axis_buf0, axis_buf1, tc)
           if use_tensor_cores == 1: self.tensor_core = tc # TC=2 will do the shape ops without the WMMA
-        return True
+          opted.add(reduceop)
+        if len(opted) == len(self.reduceops): return True
     return False
 
   def apply_tensor_cores(self, use_tensor_cores=1, extra_opts:Optional[List[Opt]]=None, axis:int=0, tc_opt:int=getenv("TC_OPT")) -> bool:
@@ -482,7 +484,7 @@ class Kernel:
       check(axis < self.shape_len - self.upcasted, "cannot pad upcasted")
       # ok to pad SUM if all parent ops have f(0) = 0
       if self.first_reduce <= axis:
-        check(self.reduceop.op is ReduceOps.SUM and all(op.op not in UNSAFE_PAD_OPS for ops in self.reduceop.src for op in ops.lazyops), "cannot pad")
+        check(all([reduceop.op is ReduceOps.SUM and all(op.op not in UNSAFE_PAD_OPS for ops in reduceop.src for op in ops.lazyops) for reduceop in self.reduceops]), "cannot pad")
       padded = False
       for i,st in enumerate(self.sts):
         if self.sts[i].shape[axis] == 1: continue  # reduced
