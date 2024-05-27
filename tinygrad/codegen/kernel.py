@@ -324,7 +324,7 @@ class Kernel:
     if use_tensor_cores and self.opts.has_local and self.reduceop and self.reduceop.op is ReduceOps.SUM:
       for tc in self.opts.tensor_cores:
         has_cast = tc.dtype_in != tc.dtype_out
-        if has_cast and all([not(reduceop.src[0].op is UnaryOps.CAST and reduceop.src[0].arg == tc.dtype_out) for reduceop in self.reduceops]): break
+        if has_cast and all([not(reduceop.src[0].op is UnaryOps.CAST and reduceop.src[0].arg == tc.dtype_out) for reduceop in self.reduceops]): continue
 
         mul_ops = [r.src[0].src[0] for r in self.reduceops] if has_cast else [r.src[0] for r in self.reduceops]
         if [op.op is not BinaryOps.MUL for op in mul_ops]: continue
