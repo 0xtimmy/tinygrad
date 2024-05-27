@@ -340,14 +340,26 @@ class Kernel:
         if any([buf0 is None or buf1 is None for (buf0, buf1) in buf_pairs]): continue
 
         stride_pairs = [(self.sts[buf0].real_strides(), self.sts[buf1].real_strides()) for (buf0, buf1) in buf_pairs]
-        a
-        axis_pairs = [(
-          [(i,self.full_shape[i],buf1_strides[i]) for i,s in enumerate(buf0_strides[:self.first_reduce]) if s == 0],
-          [(i,self.full_shape[i],buf0_strides[i]) for i,s in enumerate(buf1_strides[:self.first_reduce]) if s == 0]
-        ) for (buf0_strides, buf1_strides) in stride_pairs]
-        if any(not(axis_buf0 and axis_buf1 and ((self.shape_len-self.first_reduce) == 1 or (opt_level >= 1))) for (axis_buf0, axis_buf1) in axis_pairs): continue
+        buf0_strides, buf1_strides = stride_pairs[0]
+        # axis_pairs = [(
+        #   [(i,self.full_shape[i],buf1_strides[i]) for i,s in enumerate(buf0_strides[:self.first_reduce]) if s == 0],
+        #   [(i,self.full_shape[i],buf0_strides[i]) for i,s in enumerate(buf1_strides[:self.first_reduce]) if s == 0]
+        # ) for (buf0_strides, buf1_strides) in stride_pairs]
+        # if any(not(axis_buf0 and axis_buf1 and ((self.shape_len-self.first_reduce) == 1 or (opt_level >= 1))) for (axis_buf0, axis_buf1) in axis_pairs): continue
 
-        axis_buf0, axis_buf1 = axis_pairs[0]
+        # axis_buf0, axis_buf1 = axis_pairs[0]
+        # axis_choices = list(itertools.product(axis_buf0, axis_buf1, range(self.first_reduce, self.shape_len)))
+        # if not(axis < len(axis_choices)): continue
+
+        # s0, s1, s2 = axis_choices[-(axis+1)][0][0], axis_choices[-(axis+1)][1][0], axis_choices[-(axis+1)][2]  # s0 is n, s1 is m, s2 is k
+        # axis_pads = [(x, tc.dims[i]) for i, x in enumerate([s0, s1, s2]) if self.full_shape[x]%tc.dims[i] != 0]
+        # if axis_pads and (opt_level < 2): continue
+
+        # buf0_strides, buf1_strides = self.sts[buf0].real_strides(), self.sts[buf1].real_strides()
+        axis_buf0 = [(i,self.full_shape[i],buf1_strides[i]) for i,s in enumerate(buf0_strides[:self.first_reduce]) if s == 0]
+        axis_buf1 = [(i,self.full_shape[i],buf0_strides[i]) for i,s in enumerate(buf1_strides[:self.first_reduce]) if s == 0]
+        if not(axis_buf0 and axis_buf1 and ((self.shape_len-self.first_reduce) == 1 or (opt_level >= 1))): continue
+
         axis_choices = list(itertools.product(axis_buf0, axis_buf1, range(self.first_reduce, self.shape_len)))
         if not(axis < len(axis_choices)): continue
 
