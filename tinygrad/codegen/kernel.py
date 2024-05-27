@@ -368,7 +368,7 @@ class Kernel:
         if axis_pads and (opt_level < 2): continue
 
         # tensor core -- unroll the reduce dim, upcast input, then create the correct thread pattern
-        self.tensor_core_opts = (tc_opts:=TensorCoreOptions(bufs=(b for pair in buf_pairs for b in pair), axes=[s0, s1], axes_exist=[True, True]))
+        self.tensor_core_opts = (tc_opts:=TensorCoreOptions(bufs=(pair for pair in buf_pairs), axes=[s0, s1], axes_exist=[True, True]))
 
         # attempt to pad the tensor axes that require it
         try:

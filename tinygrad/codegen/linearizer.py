@@ -216,12 +216,12 @@ class Linearizer(Kernel):
       localbuf_idx = self.bufs.index(self.local_alias[i])
       buf_idxs = [idx*0 if s == 0 else idx for idx,s in zip(global_idxs+local_idxs+reduce_idxs+full_upcast_idxs,self.sts[i].real_strides())]
       if (tc:=self.tensor_core):
-        min_alias_idx = min(self.local_alias.keys())
+        min_alias_idx = [min(pair) for pair in self.tensor_core_opts.bufs if i in pair]
         print("self.local_alias=")
         print(self.local_alias)
         replace_input_idxs = calc_tc_idxs(
-          tc.thread_local_sizes[i%2-min_alias_idx], 
-          tc.thread_local_aliases[i%2-min_alias_idx])
+          tc.thread_local_sizes[i-min_alias_idx], 
+          tc.thread_local_aliases[i-min_alias_idx])
         for n in range(len(tc.threads)):
           buf_idxs[self.global_dims+n] = replace_input_idxs[n] # replace locals
         for n in range(tc.num_upcasts()):
@@ -347,8 +347,9 @@ class Linearizer(Kernel):
     if (tc:=self.tensor_core) and (tc_opts:=self.tensor_core_opts):
       print("tensor core=", tc)
       alias_pattern = [0]*(self.global_dims) + [2]*(len(tc.threads)) + [0]*(self.local_dims-len(tc.threads)) + [0]*(self.shape_len-self.upcasted-self.first_reduce) + [1,1] + [3]*(self.upcasted-2)  # noqa: E501
-      for tc_buf in tc_opts.bufs:
-        self.alias_buffer(tc_buf, alias_pattern)
+      for (tc_buf0,tc_buf1) in tc_opts.bufs:
+        self.alias_buffer(tc_buf0, alias_pattern)
+        self.alias_buffer(tc_buf1, alias_pattern)
 
     # save backups
     sts_backup, gfr_backup, upc_backup = self.sts[:], self.group_for_reduces, self.upcasted
