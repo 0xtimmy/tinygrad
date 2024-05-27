@@ -219,6 +219,7 @@ class Linearizer(Kernel):
         min_alias_idx = [min(*pair) for pair in self.tensor_core_opts.bufs if i in pair]
         print("self.local_alias=")
         print(self.local_alias)
+        print("min_alias_idx=", min_alias_idx)
         replace_input_idxs = calc_tc_idxs(
           tc.thread_local_sizes[i-min_alias_idx], 
           tc.thread_local_aliases[i-min_alias_idx])
