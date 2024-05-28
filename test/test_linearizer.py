@@ -433,6 +433,23 @@ class TestLinearizer(unittest.TestCase):
       helper_linearizer_ast(ast, [a, b, c, d], apply_tc=True, atol=atol, rtol=rtol, wanna_output=[np.matmul(a.numpy(), b.numpy()).flatten() + np.matmul(c.numpy(), d.numpy()).flatten()])
   
   @unittest.skipUnless(Device[Device.DEFAULT].renderer.tensor_cores, "test requires tensor cores")
+  def test_tensor_multireduce_diff_shapes(self):
+    N = 128
+    Tensor.manual_seed(1552)
+    for tc in Device[Device.DEFAULT].renderer.tensor_cores:
+      # bf16 buffer returns float32 numpy outputs so test would fail. testing opt with half suffices.
+      if tc.dtype_in == dtypes.bfloat16: continue
+      a = Tensor.randn(128, 128)
+      b = Tensor.randn(128, 128)
+      c = Tensor.randn(128, 128)
+      r1 = b.matmul(c)
+      r0 = a.matmul(r1)
+      ast = _temp_create_multireduce_ast(r0, r1)
+      # (atol, rtol) = ((0.25, 0.01) if tc.dtype_out == dtypes.half else (3e-2, 1e-3)) if tc.dtype_in == dtypes.half else (1e-4, 1e-4)
+      # helper_linearizer_ast(ast, [a, b, c, d], apply_tc=True, atol=atol, rtol=rtol, wanna_output=[np.matmul(a.numpy(), b.numpy()).flatten() + np.matmul(c.numpy(), d.numpy()).flatten()])
+
+
+  @unittest.skipUnless(Device[Device.DEFAULT].renderer.tensor_cores, "test requires tensor cores")
   def test_tensor_multireduce_sequential_tc(self):
     N = 128
     Tensor.manual_seed(1552)
@@ -475,7 +492,7 @@ class TestLinearizer(unittest.TestCase):
       ))
       attn = LazyOp(op=BinaryOps.DIV, src=(
         qk,
-        LazyOp(op=ReduceOps.SUM, src=(qk,), axis=(1,))
+        LazyOp(op=ReduceOps.SUM, src=(qk,), arg=(1,))
       ))
       ast = LazyOp(op=BufferOps.STORE, src=(
         LazyOp(op=ReduceOps.SUM, src=(
