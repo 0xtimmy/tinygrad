@@ -329,14 +329,14 @@ class TestLinearizer(unittest.TestCase):
   @unittest.skipUnless(Device[Device.DEFAULT].renderer.has_local, "test requires locals")
   @unittest.skipUnless(Device[Device.DEFAULT].renderer.has_shared, "test requires shared")
   def test_local_and_grouped_reduce_multireduce(self):
-    N = 32
+    N = 128
     Tensor.manual_seed(1882)
     a = Tensor.rand(4, 4, N, N).softmax(axis=3).realize()
-    b = Tensor.rand(4, 4, N, 1).realize()
+    b = Tensor.rand(4, 4, N).realize()
     # TODO: this isn't the best AST, it's always math.inf
     r0 = ((b+1).sqrt() + ((a+1).sum(axis=3)))
     c = Tensor.rand(4, 4, N, N).softmax(axis=3).realize()
-    d = Tensor.rand(4, 4, N, 1).realize()
+    d = Tensor.rand(4, 4, N).realize()
     r1 = ((d+1).sqrt() + ((c+1).sum(axis=3)))
     ast = _temp_create_multireduce_ast(r0, r1)
     helper_linearizer_ast(ast, [b, a, d, c], [
