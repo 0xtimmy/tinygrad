@@ -338,6 +338,8 @@ class TestLinearizer(unittest.TestCase):
     c = Tensor.rand(4, 4, N, N).realize()
     d = Tensor.rand(4, 4, N).realize()
     r1 = ((d+1).sqrt() + ((c+1).sum(axis=3)))
+    r0 = (a+1).sum(axis=3)
+    r1 = (c+1).sum(axis=3)
     ast = _temp_create_multireduce_ast(r0, r1)
     helper_linearizer_ast(ast, [a, b, c, d], [
       # [Opt(OptOps.LOCAL, 0, 2)],
