@@ -343,10 +343,10 @@ class TestLinearizer(unittest.TestCase):
     ast = _temp_create_multireduce_ast(r0, r1)
     # ast = LazyOp(op=BufferOps.STORE, src=(
     #   LazyOp(op=BinaryOps.ADD, src=(
-    #     LazyOp(op=BufferOps.LOAD, src=())
+    #     LazyOp(op=BufferOps.LOAD, src=(), arg=MemBuffer())
     #   )),
     # ), arg=MemBuffer(idx=0, dtype=dtypes.float, st=ShapeTracker.from_shape((4,4,N))))
-    helper_linearizer_ast(ast, [a, b, c, d], [
+    helper_linearizer_ast(ast, [b, a, d, c], [
       # [Opt(OptOps.LOCAL, 0, 2)],
       # [Opt(OptOps.LOCAL, 0, 8)],
       # [Opt(OptOps.LOCAL, 0, 16)], # Checking how it works with locals
