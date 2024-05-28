@@ -1179,8 +1179,9 @@ def _helper_linearizer_opt_ast(realized_ast:Tuple[LazyOp, ...], real_bufs:List[B
   for buf in outbufs: buf.copyin(np.zeros((buf.size, ), dtype=buf.dtype.np).data) # Zero to check that all values are filled
   prg.exec(real_bufs)
   for i, buf in enumerate(outbufs):
-    print("optimized:\n", np.frombuffer(buf.as_buffer(), buf.dtype.np).tolist()) 
-    print("unoptimized:\n", wanna_output[i].tolist())
+    if isinstance(np.ndarray, buf) and isinstance(np.ndarray, wanna_output[i]):
+      print("optimized:\n", np.frombuffer(buf.as_buffer(), buf.dtype.np).tolist()) 
+      print("unoptimized:\n", wanna_output[i].tolist())
   for i, buf in enumerate(outbufs):
     np.testing.assert_allclose(np.frombuffer(buf.as_buffer(), buf.dtype.np), wanna_output[i], atol=atol, rtol=rtol)
   for i, x in enumerate(opts): # Check custom transformations if any.
