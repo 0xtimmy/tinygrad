@@ -468,7 +468,7 @@ class TestLinearizer(unittest.TestCase):
               )),
             ), arg=(2,))
           )),
-        ), arg=(2,)),
+        ), arg=(1,)),
       ), arg=MemBuffer(idx=0, dtype=dtypes.float, st=ShapeTracker(views=(View(shape=(128,128,1),strides=(128,1,0),offset=0,mask=None,contiguous=True),)))),
       (atol, rtol) = ((0.25, 0.01) if tc.dtype_out == dtypes.half else (3e-2, 1e-3)) if tc.dtype_in == dtypes.half else (1e-4, 1e-4)
       helper_linearizer_ast(ast, [a, b, c], apply_tc=True, atol=atol, rtol=rtol, wanna_output=[(c.numpy() - np.matmul(a.numpy(), b.numpy())).sum(axis=1).flatten()])
@@ -480,7 +480,7 @@ class TestLinearizer(unittest.TestCase):
     for tc in Device[Device.DEFAULT].renderer.tensor_cores:
       # bf16 buffer returns float32 numpy outputs so test would fail. testing opt with half suffices.
       if tc.dtype_in == dtypes.bfloat16: continue
-      a, b = Tensor.rand(N, N//2, dtype=tc.dtype_in).realize(), Tensor.rand(N, N//2, dtype=tc.dtype_in).realize()
+      a, b = Tensor.rand(N, N//2, dtype=tc.dtype_in).realize(), Tensor.rand(N//2, N, dtype=tc.dtype_in).realize()
       r0 = a.matmul(b, acc_dtype=tc.dtype_out)
       c, d = Tensor.rand(N, N, dtype=tc.dtype_in).realize(), Tensor.rand(N, N, dtype=tc.dtype_in).realize()
       r1 = c.matmul(d, acc_dtype=tc.dtype_out)
