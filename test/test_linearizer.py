@@ -1166,6 +1166,7 @@ def _helper_linearizer_opt_ast(realized_ast:Tuple[LazyOp, ...], real_bufs:List[B
   lins.append(k)
   prg = get_prg(k)
   prg.exec(real_bufs)
+  print(prg.p.src)
   if len(wanna_output) == 0: wanna_output = [np.frombuffer(buf.as_buffer(), buf.dtype.np).copy() for buf in outbufs]
   else:
     for i, buf in enumerate(outbufs):
