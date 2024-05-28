@@ -334,18 +334,11 @@ class TestLinearizer(unittest.TestCase):
     a = Tensor.rand(4, 4, N, N).softmax(axis=3).realize()
     b = Tensor.rand(4, 4, N, 1).realize()
     # TODO: this isn't the best AST, it's always math.inf
-    # r0 = ((b+1).sqrt() + ((a+1).sum(axis=3)))
+    r0 = ((b+1).sqrt() + ((a+1).sum(axis=3)))
     c = Tensor.rand(4, 4, N, N).softmax(axis=3).realize()
     d = Tensor.rand(4, 4, N, 1).realize()
-    # r1 = ((d+1).sqrt() + ((c+1).sum(axis=3)))
-    r0 = b+a.sum(axis=3, keepdim=True)
-    r1 = d+c.sum(axis=3, keepdim=True)
+    r1 = ((d+1).sqrt() + ((c+1).sum(axis=3)))
     ast = _temp_create_multireduce_ast(r0, r1)
-    # ast = LazyOp(op=BufferOps.STORE, src=(
-    #   LazyOp(op=BinaryOps.ADD, src=(
-    #     LazyOp(op=BufferOps.LOAD, src=(), arg=MemBuffer())
-    #   )),
-    # ), arg=MemBuffer(idx=0, dtype=dtypes.float, st=ShapeTracker.from_shape((4,4,N))))
     helper_linearizer_ast(ast, [b, a, d, c], [
       # [Opt(OptOps.LOCAL, 0, 2)],
       # [Opt(OptOps.LOCAL, 0, 8)],
