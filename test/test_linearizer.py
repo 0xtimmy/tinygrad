@@ -480,7 +480,7 @@ class TestLinearizer(unittest.TestCase):
     for tc in Device[Device.DEFAULT].renderer.tensor_cores:
       # bf16 buffer returns float32 numpy outputs so test would fail. testing opt with half suffices.
       if tc.dtype_in == dtypes.bfloat16: continue
-      a, b = Tensor.rand(N, N, dtype=tc.dtype_in).realize(), Tensor.rand(N, N, dtype=tc.dtype_in).realize()
+      a, b = Tensor.rand(N, N//2, dtype=tc.dtype_in).realize(), Tensor.rand(N, N//2, dtype=tc.dtype_in).realize()
       r0 = a.matmul(b, acc_dtype=tc.dtype_out)
       c, d = Tensor.rand(N, N, dtype=tc.dtype_in).realize(), Tensor.rand(N, N, dtype=tc.dtype_in).realize()
       r1 = c.matmul(d, acc_dtype=tc.dtype_out)
