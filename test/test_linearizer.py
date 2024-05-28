@@ -418,7 +418,52 @@ class TestLinearizer(unittest.TestCase):
     ], wanna_output=[(a.numpy().sum(axis=(1, 3))+b.numpy().sum(axis=(1, 3))).flatten()])
 
   @unittest.skipUnless(Device[Device.DEFAULT].renderer.tensor_cores, "test requires tensor cores")
-  def test_tensor_core_opts_multireduce(self):
+  def test_tensor_multireduce_diff_shapes(self):
+    N = 128
+    Tensor.manual_seed(1552)
+    for tc in Device[Device.DEFAULT].renderer.tensor_cores:
+      # bf16 buffer returns float32 numpy outputs so test would fail. testing opt with half suffices.
+      if tc.dtype_in == dtypes.bfloat16: continue
+      a, b = Tensor.rand(N, N/2, dtype=tc.dtype_in).realize(), Tensor.rand(N/2, N, dtype=tc.dtype_in).realize()
+      r0 = a.matmul(b, acc_dtype=tc.dtype_out)
+      c, d = Tensor.rand(N, N, dtype=tc.dtype_in).realize(), Tensor.rand(N, N, dtype=tc.dtype_in).realize()
+      r1 = c.matmul(d, acc_dtype=tc.dtype_out)
+      ast = _temp_create_multireduce_ast(r0, r1)
+      (atol, rtol) = ((0.25, 0.01) if tc.dtype_out == dtypes.half else (3e-2, 1e-3)) if tc.dtype_in == dtypes.half else (1e-4, 1e-4)
+      helper_linearizer_ast(ast, [a, b, c, d], apply_tc=True, atol=atol, rtol=rtol, wanna_output=[np.matmul(a.numpy(), b.numpy()).flatten() + np.matmul(c.numpy(), d.numpy()).flatten()])
+  
+  @unittest.skipUnless(Device[Device.DEFAULT].renderer.tensor_cores, "test requires tensor cores")
+  def test_tensor_multireduce_sequential_tc(self):
+    N = 128
+    Tensor.manual_seed(1552)
+    for tc in Device[Device.DEFAULT].renderer.tensor_cores:
+      # bf16 buffer returns float32 numpy outputs so test would fail. testing opt with half suffices.
+      if tc.dtype_in == dtypes.bfloat16: continue
+      a, b = Tensor.rand(N, N, dtype=tc.dtype_in).realize(), Tensor.rand(N, N, dtype=tc.dtype_in).realize()
+      r0 = a.matmul(b, acc_dtype=tc.dtype_out)
+      c = Tensor.rand(N, N, dtype=tc.dtype_in).realize()
+      r1 = c.matmul(r0, acc_dtype=tc.dtype_out)
+      ast = _temp_create_multireduce_ast(r0, r1)
+      (atol, rtol) = ((0.25, 0.01) if tc.dtype_out == dtypes.half else (3e-2, 1e-3)) if tc.dtype_in == dtypes.half else (1e-4, 1e-4)
+      helper_linearizer_ast(ast, [a, b, c], apply_tc=True, atol=atol, rtol=rtol, wanna_output=[np.matmul(a.numpy(), b.numpy()).flatten() + np.matmul(c.numpy())])
+
+  @unittest.skipUnless(Device[Device.DEFAULT].renderer.tensor_cores, "test requires tensor cores")
+  def test_tensor_multireduce_diff_shapes(self):
+    N = 128
+    Tensor.manual_seed(1552)
+    for tc in Device[Device.DEFAULT].renderer.tensor_cores:
+      # bf16 buffer returns float32 numpy outputs so test would fail. testing opt with half suffices.
+      if tc.dtype_in == dtypes.bfloat16: continue
+      a, b = Tensor.rand(N, N/2, dtype=tc.dtype_in).realize(), Tensor.rand(N/2, N, dtype=tc.dtype_in).realize()
+      r0 = a.matmul(b, acc_dtype=tc.dtype_out)
+      c, d = Tensor.rand(N, N, dtype=tc.dtype_in).realize(), Tensor.rand(N, N, dtype=tc.dtype_in).realize()
+      r1 = c.matmul(d, acc_dtype=tc.dtype_out)
+      ast = _temp_create_multireduce_ast(r0, r1)
+      (atol, rtol) = ((0.25, 0.01) if tc.dtype_out == dtypes.half else (3e-2, 1e-3)) if tc.dtype_in == dtypes.half else (1e-4, 1e-4)
+      helper_linearizer_ast(ast, [a, b, c, d], apply_tc=True, atol=atol, rtol=rtol, wanna_output=[np.matmul(a.numpy(), b.numpy()).flatten() + np.matmul(c.numpy(), d.numpy()).flatten()])
+  
+  @unittest.skipUnless(Device[Device.DEFAULT].renderer.tensor_cores, "test requires tensor cores")
+  def test_tensor_core_opts_multireduce_fail(self):
     N = 128
     Tensor.manual_seed(1552)
     for tc in Device[Device.DEFAULT].renderer.tensor_cores:
