@@ -452,7 +452,7 @@ class TestLinearizer(unittest.TestCase):
             ), arg=(2,))
           )),
         ), arg=(2,)),
-      ), arg=MemBuffer(idx=0, dtype=dtypes.float, st=ShapeTracker(views=(View(shape=(128,128,1),strides=(128,1,0),offset=0,mask=None,contiguous=True))))),
+      ), arg=MemBuffer(idx=0, dtype=dtypes.float, st=ShapeTracker(views=(View(shape=(128,128,1),strides=(128,1,0),offset=0,mask=None,contiguous=True),)))),
       (atol, rtol) = ((0.25, 0.01) if tc.dtype_out == dtypes.half else (3e-2, 1e-3)) if tc.dtype_in == dtypes.half else (1e-4, 1e-4)
       helper_linearizer_ast(ast, [a, b, c], apply_tc=True, atol=atol, rtol=rtol, wanna_output=[np.matmul(a.numpy(), b.numpy()).flatten() + np.matmul(c.numpy(), np.matmul(a.numpy(), b.numpy())).flatten()])
 
