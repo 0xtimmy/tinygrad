@@ -457,6 +457,39 @@ class TestLinearizer(unittest.TestCase):
       helper_linearizer_ast(ast, [a, b, c], apply_tc=True, atol=atol, rtol=rtol, wanna_output=[np.matmul(c.numpy(), np.matmul(a.numpy(), b.numpy())).flatten()])
 
   @unittest.skipUnless(Device[Device.DEFAULT].renderer.tensor_cores, "test requires tensor cores")
+  def test_tensor_multireduce_sequential_tc_and_not_tc(self):
+    N = 128
+    emb = 266
+    Tensor.manual_seed(1552)
+    for tc in Device[Device.DEFAULT].renderer.tensor_cores:
+      # bf16 buffer returns float32 numpy outputs so test would fail. testing opt with half suffices.
+      if tc.dtype_in == dtypes.bfloat16: continue
+      q, k, v = Tensor.rand(N, emb, dtype=tc.dtype_in).realize(), Tensor.rand(emb, N, dtype=tc.dtype_in).realize(), Tensor.rand(N, emb, dtype=tc.dtype_in).realize()
+      qk = LazyOp(op=UnaryOps.EXP2, src=(
+        LazyOp(op=ReduceOps.SUM, src=(
+              LazyOp(op=BinaryOps.MUL, src=(
+                LazyOp(op=BufferOps.LOAD, src=(), arg=MemBuffer(idx=1, dtype=dtypes.float32, st=ShapeTracker(views=(View(shape=(128,128,128),strides=(128,0,1),offset=0,mask=None,contiguous=False),)))),
+                LazyOp(op=BufferOps.LOAD, src=(), arg=MemBuffer(idx=2, dtype=dtypes.float32, st=ShapeTracker(views=(View(shape=(128,128,128),strides=(0,1,128),offset=0,mask=None,contiguous=False),))))
+              )),
+            ), arg=(2,)),
+      ))
+      attn = LazyOp(op=BinaryOps.DIV, src=(
+        qk,
+        LazyOp(op=ReduceOps.SUM, src=(qk,), axis=(1,))
+      ))
+      ast = LazyOp(op=BufferOps.STORE, src=(
+        LazyOp(op=ReduceOps.SUM, src=(
+          LazyOp(op=BinaryOps.MUL, src=(
+            LazyOp(op=BufferOps.LOAD, src=(), arg=MemBuffer(idx=3, dtype=dtypes.float32, st=ShapeTracker(views=(View(shape=(128,128,128),strides=(128,0,1),offset=0,mask=None,contiguous=False),)))),
+            attn
+          )),
+        ), arg=(2,)),
+      ), arg=MemBuffer(idx=0, dtype=dtypes.float, st=ShapeTracker(views=(View(shape=(128,128,1),strides=(128,1,0),offset=0,mask=None,contiguous=True),)))),
+      (atol, rtol) = ((0.25, 0.01) if tc.dtype_out == dtypes.half else (3e-2, 1e-3)) if tc.dtype_in == dtypes.half else (1e-4, 1e-4)
+      qk = np.exp2(np.matmul(q.numpy(), k.numpy()))
+      helper_linearizer_ast(ast, [q, k, v], apply_tc=True, atol=atol, rtol=rtol, wanna_output=[np.matmul(v, qk/qk.sum(axis=1, keepdims=True)).flatten()])
+
+  @unittest.skipUnless(Device[Device.DEFAULT].renderer.tensor_cores, "test requires tensor cores")
   def test_tensor_multireduce_diff_shapes(self):
     N = 128
     Tensor.manual_seed(1552)
@@ -1217,7 +1250,9 @@ def _helper_linearizer_opt_ast(realized_ast:Tuple[LazyOp, ...], real_bufs:List[B
   k = Linearizer(*realized_ast)
   lins.append(k)
   prg = get_prg(k)
+  print(prg.p.src)
   prg.exec(real_bufs)
+  
   if len(wanna_output) == 0: wanna_output = [np.frombuffer(buf.as_buffer(), buf.dtype.np).copy() for buf in outbufs]
   else:
     for i, buf in enumerate(outbufs):
@@ -1228,6 +1263,7 @@ def _helper_linearizer_opt_ast(realized_ast:Tuple[LazyOp, ...], real_bufs:List[B
   lins.append(k)
   k.hand_coded_optimizations()
   prg = get_prg(k)
+  print(prg.p.src)
   for buf in outbufs: buf.copyin(np.zeros((buf.size, ), dtype=buf.dtype.np).data) # Zero to check that all values are filled
   prg.exec(real_bufs)
   for i, buf in enumerate(outbufs):
