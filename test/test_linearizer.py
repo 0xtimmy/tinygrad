@@ -331,11 +331,11 @@ class TestLinearizer(unittest.TestCase):
   def test_local_and_grouped_reduce_multireduce(self):
     N = 128
     Tensor.manual_seed(1882)
-    a = Tensor.rand(4, 4, N, N).realize()
+    a = Tensor.rand(4, 4, N, N).softmax(axis=3).realize()
     b = Tensor.rand(4, 4, N).realize()
     # TODO: this isn't the best AST, it's always math.inf
     # r0 = ((b+1).sqrt() + ((a+1).sum(axis=3)))
-    c = Tensor.rand(4, 4, N, N).realize()
+    c = Tensor.rand(4, 4, N, N).softmax(axis=1).realize()
     d = Tensor.rand(4, 4, N).realize()
     # r1 = ((d+1).sqrt() + ((c+1).sum(axis=3)))
     r0 = b+a.sum(axis=3)
