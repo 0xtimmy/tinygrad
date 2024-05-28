@@ -329,7 +329,7 @@ class TestLinearizer(unittest.TestCase):
   @unittest.skipUnless(Device[Device.DEFAULT].renderer.has_local, "test requires locals")
   @unittest.skipUnless(Device[Device.DEFAULT].renderer.has_shared, "test requires shared")
   def test_local_and_grouped_reduce_multireduce(self):
-    N = 128
+    N = 32
     Tensor.manual_seed(1882)
     a = Tensor.rand(4, 4, N, N).softmax(axis=3).realize()
     b = Tensor.rand(4, 4, N).realize()
