@@ -340,19 +340,19 @@ class TestLinearizer(unittest.TestCase):
     r1 = ((d+1).sqrt() + ((c+1).sum(axis=3)))
     ast = _temp_create_multireduce_ast(r0, r1)
     helper_linearizer_ast(ast, [b, a, d, c], [
-      # [Opt(OptOps.LOCAL, 0, 2)],
-      # [Opt(OptOps.LOCAL, 0, 8)],
-      # [Opt(OptOps.LOCAL, 0, 16)], # Checking how it works with locals
-      # [Opt(OptOps.GROUPTOP, 0, 2)],
-      # [Opt(OptOps.GROUPTOP, 0, 32)],
-      # [Opt(OptOps.GROUPTOP, 0, 64)], # Checking how it works with grouped reduce
-      # [Opt(OptOps.LOCAL, 0, 2), Opt(OptOps.GROUPTOP, 0, 2)],
-      # [Opt(OptOps.LOCAL, 0, 16), Opt(OptOps.GROUPTOP, 0, 16)],
-      # [Opt(OptOps.LOCAL, 0, 32), Opt(OptOps.GROUPTOP, 0, 2)],
-      # # Checking how it works with locals + grouped reduce
-      # [Opt(OptOps.LOCAL, 0, 2), Opt(OptOps.GROUPTOP, 0, 64)],
-      # # Checking how it works with locals + grouped reduce + upcasts
-      # [Opt(OptOps.LOCAL, 0, 2), Opt(OptOps.GROUPTOP, 0, 2), Opt(OptOps.UPCAST, 0, 8), Opt(OptOps.UNROLL, 1, 4)],
+      [Opt(OptOps.LOCAL, 0, 2)],
+      [Opt(OptOps.LOCAL, 0, 8)],
+      [Opt(OptOps.LOCAL, 0, 16)], # Checking how it works with locals
+      [Opt(OptOps.GROUPTOP, 0, 2)],
+      [Opt(OptOps.GROUPTOP, 0, 32)],
+      [Opt(OptOps.GROUPTOP, 0, 64)], # Checking how it works with grouped reduce
+      [Opt(OptOps.LOCAL, 0, 2), Opt(OptOps.GROUPTOP, 0, 2)],
+      [Opt(OptOps.LOCAL, 0, 16), Opt(OptOps.GROUPTOP, 0, 16)],
+      [Opt(OptOps.LOCAL, 0, 32), Opt(OptOps.GROUPTOP, 0, 2)],
+      # Checking how it works with locals + grouped reduce
+      [Opt(OptOps.LOCAL, 0, 2), Opt(OptOps.GROUPTOP, 0, 64)],
+      # Checking how it works with locals + grouped reduce + upcasts
+      [Opt(OptOps.LOCAL, 0, 2), Opt(OptOps.GROUPTOP, 0, 2), Opt(OptOps.UPCAST, 0, 8), Opt(OptOps.UNROLL, 1, 4)],
     ])
 
   @unittest.skipUnless(Device[Device.DEFAULT].renderer.has_local, "test requires locals")
