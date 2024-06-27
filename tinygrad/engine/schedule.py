@@ -128,7 +128,7 @@ def _schedule_group(outs:Tuple[LazyBuffer, ...], realizes:Dict[LazyBuffer, None]
 # *** DAG creation: decide which LazyBuffers should realize ***
 
 def _recurse_lb(buf:LazyBuffer, realizes:Dict[LazyBuffer, None], allbufs:Dict[LazyBuffer, None],
-                simple_pads:Set[LazyBuffer], children:DefaultDict[LazyBuffer, Dict[LazyBuffer, None]], scheduled=False):
+                simple_pads:Set[LazyBuffer], children:DefaultDict[LazyBuffer, Dict[LazyBuffer, None]], scheduled=False, parents:Set[LazyBuffer]=set()):
   """recursively search the entire graph for all LazyBuffers, insert realizes after expands"""
   if buf in allbufs or buf.base.realized is not None: return
   if GRAPH: log_lazybuffer(buf, scheduled)
@@ -143,10 +143,40 @@ def _recurse_lb(buf:LazyBuffer, realizes:Dict[LazyBuffer, None], allbufs:Dict[La
       if buf.base.op is UnaryOps.CAST and isinstance(buf.base.srcs[0].dtype, ImageDType) and isinstance(buf.base.arg, ImageDType):
         pass # don't realize image to image casts. this is part of a larger problem
       else:
-        realizes[buf.base] = None
+        # realize the LAST expand
+        rp = [p.base for p in parents if p.base.op in ReduceOps]
+        print("reduceop parents: ")
+        for r in rp: print("  ", r)
+        expand_children = list(buf.base.srcs)
+        print("finding expand children of: ", buf)
+        # print("  x.srcs=", buf.srcs)
+        print("  x.base.srcs=", buf.base.srcs)
+        while len(rp) > 0 and len(expand_children) > 0:
+          cursor = expand_children.pop()
+          if cursor != cursor.base:
+            expand_children.append(cursor.base)
+            continue
+          if cursor.forced_realize or cursor.base.realized: continue
+          print("  -> checking: ", cursor)
+          print("  cursor: ", cursor, "cursor.base: ", cursor.base, (f" cursor.op in ReduceOps: {cursor.op in ReduceOps}" if hasattr(cursor, "op") else f"  cursor.base.op in ReduceOps: {cursor.base.op in ReduceOps}"))
+          if cursor.op in ReduceOps:
+            if all(cursor.st.shape == r.st.shape for r in rp): continue
+            else:
+              parents = set()
+              realizes[buf.base] = None
+              break
+          for r in rp: 
+            if cursor.st.shape != r.st.shape:
+              print("  cursor.st != buf.st\n", cursor, " != ", r)
+              parents = set()
+              realizes[buf.base] = None
+              break
+          if cursor.op not in LoadOps: 
+            assert hasattr(cursor, "srcs"), f"{cursor.op in ReduceOps}, {cursor in realizes}, {cursor == cursor.base}, {cursor.realized}, {cursor.op} LazyBuffer {cursor} does not have srcs!"
+            expand_children += list(cursor.srcs)
     # check all other pads for safe fusion
     elif any(v.mask is not None for v in buf.st.views): simple_pads.add(buf.base)
-    return _recurse_lb(buf.base, realizes, allbufs, simple_pads, children)
+    return _recurse_lb(buf.base, realizes, allbufs, simple_pads, children, parents=set.union(parents, set([buf])))
   # base
   allbufs[buf] = None
   if buf.forced_realize: realizes[buf] = None
@@ -157,7 +187,7 @@ def _recurse_lb(buf:LazyBuffer, realizes:Dict[LazyBuffer, None], allbufs:Dict[La
   if buf.op is LoadOps.VIEW: realizes[buf.srcs[0].base] = None
   for x in buf.srcs:
     children[x.base][buf] = None
-    _recurse_lb(x, realizes, allbufs, simple_pads, children)
+    _recurse_lb(x, realizes, allbufs, simple_pads, children, parents=set.union(parents, set([buf])))
 
 def _is_padding_okay(buf:LazyBuffer, realizes:Dict[LazyBuffer, None]) -> bool:
   if buf in realizes or buf.realized is not None: return True
