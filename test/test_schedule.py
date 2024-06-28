@@ -723,6 +723,13 @@ class TestSchedule(unittest.TestCase):
     run_schedule(check_schedule(out, 4))
     np.testing.assert_allclose(out.numpy(), x.numpy().std(axis=-1, ddof=1) + y.numpy().std(axis=-1, ddof=1), atol=1e-4, rtol=1e-4)
 
+  def test_std(self):
+    Tensor.manual_seed(0)
+    x = Tensor.randn(4, 32).realize()
+    out = x.std(-1)
+    run_schedule(check_schedule(out, 1))
+    np.testing.assert_allclose(out.numpy(), x.numpy().std(axis=-1, ddof=1), atol=1e-4, rtol=1e-4)
+
   # multireduce spec
   def test_multireduce_diffops_sequential(self):
     Tensor.manual_seed(0)

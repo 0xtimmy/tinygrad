@@ -145,29 +145,29 @@ def _recurse_lb(buf:LazyBuffer, realizes:Dict[LazyBuffer, None], allbufs:Dict[La
       else:
         # realize the LAST expand
         rp = [p.base for p in parents if p.base.op in ReduceOps]
-        print("reduceop parents: ")
-        for r in rp: print("  ", r)
+        # print("reduceop parents: ")
+        # for r in rp: print("  ", r)
         expand_children = list(buf.base.srcs)
-        print("finding expand children of: ", buf)
-        # print("  x.srcs=", buf.srcs)
-        print("  x.base.srcs=", buf.base.srcs)
+        # print("finding expand children of: ", buf)
         while len(rp) > 0 and len(expand_children) > 0:
           cursor = expand_children.pop()
           if cursor != cursor.base:
             expand_children.append(cursor.base)
             continue
-          if cursor.forced_realize or cursor.base.realized: continue
-          print("  -> checking: ", cursor)
-          print("  cursor: ", cursor, "cursor.base: ", cursor.base, (f" cursor.op in ReduceOps: {cursor.op in ReduceOps}" if hasattr(cursor, "op") else f"  cursor.base.op in ReduceOps: {cursor.base.op in ReduceOps}"))
+          if cursor.forced_realize or cursor.base.realized or cursor.op in LoadOps: continue
+          # print("  -> checking: ", cursor)
+          # print("  cursor: ", cursor, "cursor.base: ", cursor.base, (f" cursor.op in ReduceOps: {cursor.op in ReduceOps}" if hasattr(cursor, "op") else f"  cursor.base.op in ReduceOps: {cursor.base.op in ReduceOps}"))
           if cursor.op in ReduceOps:
             if all(cursor.st.shape == r.st.shape for r in rp): continue
             else:
+              # print("cursor.op in ReduceOps and not all(cursor.st.shape == r.st.shape for r in rp)", cursor)
               parents = set()
               realizes[buf.base] = None
               break
           for r in rp: 
             if cursor.st.shape != r.st.shape:
-              print("  cursor.st != buf.st\n", cursor, " != ", r)
+              # print("  cursor.st != buf.st\n", cursor, " != ", r)
+              # print("realizing buf: ", buf, " at cursor: ", cursor, " because of ", r)
               parents = set()
               realizes[buf.base] = None
               break
@@ -226,6 +226,9 @@ def _graph_schedule(outs:List[LazyBuffer], seen:Set[LazyBuffer]) -> Tuple[Defaul
   for p in simple_pads:
     if not _is_padding_okay(p, realizes):
       realizes[p] = None
+
+  print("realizes post_recurse_lb")
+  for r in realizes: print("  ", r)
 
   # find all reduces, and pair them to a elementwise op. if they can't be cleanly paired, force realize the reduce (or a contig child)
   reduce_for_op: Dict[LazyBuffer, LazyBuffer] = {}
