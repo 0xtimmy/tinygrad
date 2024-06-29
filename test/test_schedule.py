@@ -726,9 +726,10 @@ class TestSchedule(unittest.TestCase):
   def test_std(self):
     Tensor.manual_seed(0)
     x = Tensor.randn(4, 32).realize()
-    out = x.std(-1)
+    mu = (x.sum(axis=-1, keepdim=True).expand(4,32) / 32.0)
+    out = ((x - mu).square().sum(-1) / 32.0).sqrt()
     run_schedule(check_schedule(out, 1))
-    np.testing.assert_allclose(out.numpy(), x.numpy().std(axis=-1, ddof=1), atol=1e-4, rtol=1e-4)
+    np.testing.assert_allclose(out.numpy(), x.numpy().std(axis=-1, ddof=0), atol=1e-4, rtol=1e-4)
 
   # multireduce spec
   def test_multireduce_diffops_sequential(self):

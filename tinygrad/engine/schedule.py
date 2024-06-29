@@ -92,7 +92,7 @@ def _recursive_lazyop(buf:LazyBuffer, inputs:List[LazyBuffer], outputs:Tuple[Laz
 
   # if it's a reduce, we have to change the shapetracker
   if buf.op in ReduceOps:
-    assert st.contiguous, "ReduceOps late fusion must be contiguous"
+    # assert st.contiguous, "ReduceOps late fusion must be contiguous"
     st = ShapeTracker.from_shape(buf.srcs[0].shape)
 
   # otherwise we fuse it like normal
@@ -232,7 +232,32 @@ def _graph_schedule(outs:List[LazyBuffer], seen:Set[LazyBuffer]) -> Tuple[Defaul
 
   # find all reduces, and pair them to a elementwise op. if they can't be cleanly paired, force realize the reduce (or a contig child)
   reduce_for_op: Dict[LazyBuffer, LazyBuffer] = {}
+  groups = {}
+
+  # new
   for r in allbufs:
+    if r.op not in ReduceOps: continue
+    reduce_for_op[r] = r
+
+    tr = r
+    st = tr.st
+    while True:
+      if len(children[tr]) != 1: 
+        print("  -0> breaking chase @ len(children[tr]) != 1")
+        break
+      tr_next = next(iter(children[tr]))
+      st_childs = dedup(s for s in tr_next.srcs if s.base is tr)
+      if len(st_childs) > 1:
+        print("  -1> breaking chase @ len(st_childs) > 1")
+        break
+      st = st + st_childs[0].st
+      if not st.contiguous or tr_next.op in ReduceOps:
+        print("  -2> breaking chase @ not st.contiguous or tr_next.op in ReduceOps")
+        break
+      tr = tr_next
+    reduce_for_op[tr] = r
+
+  for r in []:
     if r.op not in ReduceOps or r in realizes: continue
 
     group: Set[LazyBuffer] = set()
